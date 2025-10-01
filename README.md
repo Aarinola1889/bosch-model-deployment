@@ -60,3 +60,17 @@ git commit -m "feat: initial Bosch dataset generation"
 git commit -m "feat: implement Random Forest model"
 git commit -m "feat: deploy Flask API to Render"
 git commit -m "docs: add comprehensive 
+
+## 🚀 Live Deployment
+**API URL:** https://bosch-model-api.onrender.com
+
+### Endpoints:
+- `GET /` - Homepage
+- `GET /health` - Health check
+- `POST /predict` - Demand predictions
+
+### Example Usage:
+```python
+import requests
+response = requests.get("https://bosch-model-api.onrender.com/health")
+print(response.json())
