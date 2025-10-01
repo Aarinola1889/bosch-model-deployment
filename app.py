@@ -1,13 +1,12 @@
 from flask import Flask, request, jsonify
+import joblib
 import pandas as pd
-import numpy as np
 import os
 
 app = Flask(__name__)
 
-# Try to load model with basic joblib (no scikit-learn dependency for inference)
+# Load model directly with joblib
 try:
-    import joblib
     model = joblib.load('bosch_model.joblib')
     model_loaded = True
     print("✅ Model loaded successfully")
@@ -21,8 +20,8 @@ def home():
     <html>
         <body style="font-family: Arial; margin: 40px;">
             <h1>🚀 Bosch Demand Prediction API</h1>
-            <p>Model Loaded: <strong>""" + str(model_loaded) + """</strong></p>
-            <p><a href="/health">Check Health</a></p>
+            <p>Model Status: <strong>""" + ("✅ LOADED" if model_loaded else "❌ FAILED") + """</strong></p>
+            <p><a href="/health">Health Check</a></p>
         </body>
     </html>
     """
@@ -30,7 +29,7 @@ def home():
 @app.route('/health')
 def health():
     return jsonify({
-        "status": "healthy" if model_loaded else "degraded",
+        "status": "healthy" if model_loaded else "degraded", 
         "model_loaded": model_loaded,
         "service": "Bosch Demand Predictor",
         "version": "1.0"
@@ -44,7 +43,7 @@ def predict():
     try:
         data = request.json
         
-        # Create DataFrame for prediction
+        # Convert input to DataFrame
         input_data = pd.DataFrame([[
             float(data['throughput_rate']),
             float(data['downtime_minutes']), 
@@ -54,11 +53,9 @@ def predict():
             float(data['iot_sensor_reading']),
             float(data['temperature_c']),
             float(data['humidity_percent'])
-        ]], columns=['throughput_rate', 'downtime_minutes', 'inventory_level',
-                    'supplier_lead_time_days', 'defect_rate', 'iot_sensor_reading',
-                    'temperature_c', 'humidity_percent'])
+        ]])
         
-        # Make prediction
+        # Make prediction (assuming model has predict method)
         prediction = model.predict(input_data)[0]
         
         return jsonify({
