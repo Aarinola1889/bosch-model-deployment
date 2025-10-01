@@ -1,4 +1,3 @@
-```txt
 flask==2.3.3
 gunicorn==20.1.0
 scikit-learn==1.2.2
