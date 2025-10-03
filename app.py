@@ -1,46 +1,73 @@
 from flask import Flask, request, jsonify
 import pandas as pd
 import os
+import sys
 
 app = Flask(__name__)
 
-# Debug model loading
-print("🔍 Starting model load...")
+print("🔍 ===== MODEL LOADING DEBUG ======")
+print(f"Python version: {sys.version}")
 print(f"Current directory: {os.getcwd()}")
 print(f"Files in directory: {os.listdir('.')}")
 
-try:
-    import joblib
-    print("✅ Joblib imported successfully")
+# Check if model file exists
+model_path = 'bosch_model.joblib'
+print(f"Looking for model file: {model_path}")
+
+if os.path.exists(model_path):
+    file_size = os.path.getsize(model_path)
+    print(f"✅ Model file FOUND: {file_size} bytes")
     
-    # Check if model file exists
-    if os.path.exists('bosch_model.joblib'):
-        file_size = os.path.getsize('bosch_model.joblib')
-        print(f"✅ Model file exists: {file_size} bytes")
-        
-        # Try to load the model
-        model = joblib.load('bosch_model.joblib')
+    # Try different loading methods
+    try:
+        print("🔄 Attempt 1: Loading with joblib...")
+        import joblib
+        model = joblib.load(model_path)
         model_loaded = True
-        print("🎉 Model loaded successfully!")
+        print("🎉 Model loaded SUCCESSFULLY with joblib!")
         
-    else:
-        print("❌ Model file NOT FOUND")
-        model_loaded = False
+    except Exception as e1:
+        print(f"❌ Joblib failed: {e1}")
         
-except Exception as e:
-    print(f"❌ Model loading failed: {e}")
+        try:
+            print("🔄 Attempt 2: Loading with pickle...")
+            import pickle
+            with open(model_path, 'rb') as f:
+                model = pickle.load(f)
+            model_loaded = True
+            print("🎉 Model loaded SUCCESSFULLY with pickle!")
+            
+        except Exception as e2:
+            print(f"❌ Pickle failed: {e2}")
+            model_loaded = False
+            model = None
+            
+else:
+    print("❌ Model file NOT FOUND!")
     model_loaded = False
+    model = None
+
+print(f"Final model_loaded status: {model_loaded}")
+print("===== END DEBUG ======")
 
 @app.route('/')
 def home():
-    status = "✅ LOADED" if model_loaded else "❌ FAILED"
+    status = "✅ FULLY OPERATIONAL" if model_loaded else "❌ MODEL LOADING FAILED"
     return f"""
     <html>
-        <body style="font-family: Arial; margin: 40px;">
+        <head>
+            <title>Bosch Demand Prediction</title>
+            <style>
+                body {{ font-family: Arial; margin: 40px; }}
+                .success {{ color: green; font-weight: bold; }}
+                .error {{ color: red; font-weight: bold; }}
+            </style>
+        </head>
+        <body>
             <h1>🚀 Bosch Demand Prediction API</h1>
-            <p>Model Status: <strong>{status}</strong></p>
-            <p>Check the Render logs for detailed loading information</p>
-            <p><a href="/health">Health Check</a></p>
+            <p>Status: <span class="{'success' if model_loaded else 'error'}">{status}</span></p>
+            <p><a href="/health">Health Check</a> | <a href="/test">Test Prediction</a></p>
+            <p><em>Check Render logs for detailed debugging information</em></p>
         </body>
     </html>
     """
@@ -54,10 +81,39 @@ def health():
         "version": "1.0"
     })
 
+@app.route('/test')
+def test_page():
+    return """
+    <html>
+        <body style="font-family: Arial; margin: 40px;">
+            <h1>Test Prediction</h1>
+            <p>Use this curl command to test:</p>
+            <pre>
+curl -X POST https://bosch-model-api.onrender.com/predict \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "throughput_rate": 245,
+    "downtime_minutes": 15,
+    "inventory_level": 12500,
+    "supplier_lead_time_days": 7,
+    "defect_rate": 1.2,
+    "iot_sensor_reading": 0.87,
+    "temperature_c": 22.4,
+    "humidity_percent": 45
+  }'
+            </pre>
+        </body>
+    </html>
+    """
+
 @app.route('/predict', methods=['POST'])
 def predict():
     if not model_loaded:
-        return jsonify({'error': 'Model not loaded - check server logs', 'status': 'failed'}), 500
+        return jsonify({
+            'error': 'Model not loaded - check server logs for details',
+            'status': 'failed',
+            'debug_info': 'Model file exists but cannot be loaded'
+        }), 500
     
     try:
         data = request.json
