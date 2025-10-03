@@ -4,26 +4,29 @@ import pickle
 
 app = Flask(__name__)
 
-# Load the simple model
+# Load the function-based model
 try:
     with open('bosch_model.pkl', 'rb') as f:
-        model = pickle.load(f)
+        model_data = pickle.load(f)
+    
+    predict_function = model_data['predict_function']
     model_loaded = True
-    print("✅ SIMPLE MODEL LOADED SUCCESSFULLY!")
+    print("✅ FUNCTION-BASED MODEL LOADED SUCCESSFULLY!")
+    
 except Exception as e:
     model_loaded = False
     print(f"❌ Model loading failed: {e}")
 
 @app.route('/')
 def home():
-    return "🚀 Bosch API - SIMPLE VERSION - " + ("✅ WORKING" if model_loaded else "❌ FAILED")
+    return "🚀 Bosch API - FUNCTION MODEL - " + ("✅ WORKING" if model_loaded else "❌ FAILED")
 
 @app.route('/health')
 def health():
     return jsonify({
         "status": "healthy" if model_loaded else "degraded",
         "model_loaded": model_loaded,
-        "model_type": "simple_predictor"
+        "model_type": "function_based"
     })
 
 @app.route('/predict', methods=['POST'])
@@ -33,7 +36,7 @@ def predict():
     
     try:
         data = request.json
-        input_data = np.array([[
+        features = [
             float(data['throughput_rate']),
             float(data['downtime_minutes']), 
             float(data['inventory_level']),
@@ -42,14 +45,14 @@ def predict():
             float(data['iot_sensor_reading']),
             float(data['temperature_c']),
             float(data['humidity_percent'])
-        ]])
+        ]
         
-        prediction = model.predict(input_data)[0]
+        prediction = predict_function(features)
         
         return jsonify({
             'prediction': float(prediction),
             'status': 'success',
-            'model_type': 'simple_predictor'
+            'model_type': 'function_based'
         })
     
     except Exception as e:
